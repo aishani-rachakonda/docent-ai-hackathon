@@ -1,0 +1,1657 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cut">
+<title>Docent AI</title>
+<meta name="description" content="Your personal guide to The Met: tours planned around your interests and time, from the 44,000+ objects on view, explained in plain language with every fact linked to its source.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+:root {
+  --bg: #f6f2ea; --surface: #fffdf8; --surface-2: #efe8db; --ink: #1f1b16; --ink-2: #4a4239; --muted: #6b6257;
+  --line: #d6cab6; --rule: #b9ab94; --accent: #9c2f1f; --accent-ink: #fff; --accent-soft: #f3dcd4;
+  --ok: #2f6b3a; --warn: #8a5a00; --frame: #e9e1d2;
+  --agent-guide: #9c2f1f; --agent-research: #2f5d8a; --agent-writer: #2f6b3a; --agent-check: #7a5a8c; --agent-story: #a3621c;
+  --serif: "Times New Roman", Times, "Liberation Serif", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171411; --surface: #211d19; --surface-2: #2b2621; --ink: #f1ebe2; --ink-2: #d6ccbd; --muted: #b3a998;
+    --line: #3a332c; --rule: #5a4f43; --accent: #e07a5f; --accent-ink: #1b0f0b; --accent-soft: #3d241d;
+    --ok: #7fc28b; --warn: #e2b053; --frame: #221e1a;
+    --agent-guide: #e07a5f; --agent-research: #7fb0e0; --agent-writer: #7fc28b; --agent-check: #c3a2d6; --agent-story: #e3a764;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #171411; --surface: #211d19; --surface-2: #2b2621; --ink: #f1ebe2; --ink-2: #d6ccbd; --muted: #b3a998;
+  --line: #3a332c; --rule: #5a4f43; --accent: #e07a5f; --accent-ink: #1b0f0b; --accent-soft: #3d241d;
+  --ok: #7fc28b; --warn: #e2b053; --frame: #221e1a;
+  --agent-guide: #e07a5f; --agent-research: #7fb0e0; --agent-writer: #7fc28b; --agent-check: #c3a2d6; --agent-story: #e3a764;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 18px/1.65 var(--serif); -webkit-font-smoothing: antialiased; }
+button, textarea, input { font-family: var(--serif); }
+a { color: var(--accent); text-underline-offset: 2px; }
+.wrap { max-width: 780px; margin: 0 auto; padding: 0 16px; }
+h1, h2, h3 { font-family: var(--serif); font-weight: 400; line-height: 1.2; }
+/* Small capitals with wide spacing: the museum's label voice */
+.caps, .kicker, .stopno, .lookfor b, .listen, .send, .tour-bar .sum, .extras-head, details.work summary {
+  font-variant-caps: all-small-caps; letter-spacing: .14em; }
+
+/* Intro: centered, like an exhibition title wall */
+header { padding: 56px 0 8px; text-align: center; }
+.kicker { font-size: 17px; color: var(--accent); }
+header h1 { font-size: clamp(38px, 7vw, 58px); margin: 6px 0 0; letter-spacing: .16em; text-transform: uppercase; }
+header h1::after { content: ""; display: block; width: 72px; height: 1px; background: var(--ink); margin: 20px auto 0; }
+header p.lede { font-size: 20px; color: var(--ink-2); margin: 20px auto 30px; max-width: 600px; }
+/* Three things it does: a quiet strip, an icon and one line each */
+.how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; max-width: 760px; margin: 0 auto 40px;
+  text-align: left; }
+.how > div { display: grid; grid-template-columns: 24px 1fr; column-gap: 12px; align-items: start; }
+.how svg { grid-row: span 2; color: var(--accent); margin-top: 2px; }
+.how b { font-weight: 400; font-size: 17px; color: var(--ink); font-variant-caps: all-small-caps; letter-spacing: .12em; }
+.how span { color: var(--ink-2); font-size: 15px; line-height: 1.45; }
+
+/* Landing showcase: one work steps forward at the center while its neighbours wait smaller and dimmer at
+   the sides; every few seconds the next one comes forward and the last steps back */
+.hero { margin: 0 0 30px; }
+.showcase { position: relative; margin: 0 calc(50% - 50vw) 8px; height: 380px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+.sc-item { position: absolute; top: 20px; left: 50%; width: 300px; height: 340px; margin-left: -150px; padding: 18px;
+  display: flex; align-items: center; justify-content: center; background: var(--frame); border: 1px solid var(--line);
+  cursor: pointer; opacity: 0; transform: translateX(0) scale(.7);
+  transition: transform 1.2s cubic-bezier(.22, .61, .36, 1), opacity 1.2s ease, filter 1.2s ease, box-shadow 1.2s ease; }
+.sc-item img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+.sc-item.center { box-shadow: 0 14px 34px rgba(31, 27, 22, .14); }
+.sc-item.side { filter: saturate(.55); }
+.sc-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+/* The centre work's label, set like a museum wall label: title, then maker and date, then where to find it */
+.sc-cap { max-width: 560px; margin: 0 auto 44px; min-height: 6.4em; text-align: center; transition: opacity .5s ease; }
+.sc-cap::before { content: ""; display: block; width: 28px; height: 1px; background: var(--rule); margin: 0 auto 14px; }
+.sc-cap.fading { opacity: 0; }
+.sc-cap .t { display: block; font-size: 20px; line-height: 1.3; font-style: italic; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-cap .m { display: block; margin-top: 6px; font-size: 15px; color: var(--ink-2); font-variant-caps: all-small-caps;
+  letter-spacing: .1em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-cap .g { display: block; margin-top: 4px; font-size: 14px; color: var(--accent); font-variant-caps: all-small-caps;
+  letter-spacing: .14em; }
+body.started .showcase, body.started .sc-cap { display: none; }
+@media (prefers-reduced-motion: reduce) { .sc-item, .sc-cap { transition: none; } }
+@media (max-width: 640px) {
+  .showcase { height: 290px; }
+  .sc-item { width: 220px; height: 260px; margin-left: -110px; padding: 12px; top: 14px; }
+}
+/* The landing page below the showcase is a little wider than the conversation */
+header .how, header .tours, header .fine { margin-left: calc(50% - min(520px, 50vw - 16px));
+  margin-right: calc(50% - min(520px, 50vw - 16px)); max-width: none; }
+body.started header .fine { margin-left: 0; margin-right: 0; }
+@media (max-width: 900px) {
+  header .how, header .tours, header .fine { margin-left: 0; margin-right: 0; }
+}
+
+/* Sample tours: one light card per request, its words only */
+.tours { max-width: 880px; margin: 0 auto; text-align: left; }
+.tours-head { display: flex; align-items: center; gap: 16px; margin: 0 0 18px; color: var(--accent); font-size: 16px;
+  font-variant-caps: all-small-caps; letter-spacing: .16em; }
+.tours-head::before, .tours-head::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+/* One even row per request, all the same width and height, read as buttons */
+.tour-grid { display: grid; grid-template-columns: 1fr; gap: 10px; max-width: 780px; margin: 0 auto; }
+.tour-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px; padding: 0;
+  text-align: left; cursor: pointer; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 0; transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease; }
+.tour-card::after { content: "\2192"; flex: none; padding-right: 20px; color: var(--accent); font-size: 20px;
+  transition: transform .2s ease; }
+.tour-card:hover::after { transform: translateX(4px); }
+.tour-card:hover { border-color: var(--ink-2); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(31, 27, 22, .08); }
+.tour-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.tour-card .q { display: block; padding: 14px 0 14px 20px; font-size: 17px; line-height: 1.4; color: var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .tour-card, .tour-card::after { transition: none; }
+  .tour-card:hover, .tour-card:hover::after { transform: none; }
+}
+body.started .how, body.started .lede { display: none; }
+body.started header { padding-top: 28px; }
+body.started header h1 { font-size: clamp(28px, 5vw, 36px); }
+body.started header h1::after { margin-top: 14px; }
+.fine { font-size: 14px; font-style: italic; color: var(--muted); margin: 40px auto 0; padding-top: 16px; max-width: 880px;
+  border-top: 1px solid var(--line); }
+body.started .fine { margin-top: 10px; padding-top: 0; border-top: 0; }
+
+/* Conversation: a printed guide, not chat bubbles */
+#thread { padding: 24px 0 170px; display: flex; flex-direction: column; }
+.msg { max-width: 100%; }
+.msg.user { align-self: flex-end; max-width: min(80%, 560px); margin: 30px 0 6px; padding: 12px 18px 13px;
+  background: var(--surface); border: 1px solid var(--rule); border-right: 3px solid var(--accent);
+  font-size: 19px; line-height: 1.5; color: var(--ink); }
+.msg.user::before { content: "You"; display: block; font-size: 14px; color: var(--accent);
+  font-variant-caps: all-small-caps; letter-spacing: .14em; margin-bottom: 2px; }
+.msg.user img { display: block; max-width: 220px; margin: 6px 0; border: 1px solid var(--line); padding: 6px; background: var(--frame); }
+.msg.guide { padding: 14px 0 34px; }
+.msg.guide h1, .msg.guide h2 { font-size: 32px; margin: 12px 0 12px; text-align: center; }
+.msg.guide h3 { font-size: 22px; margin: 26px 0 4px; }
+.msg.guide p { margin: 10px 0; }
+.msg.guide ul { padding-left: 22px; }
+.cite { font-size: 14px; line-height: 1; margin: 0 1px 0 2px; vertical-align: super; color: var(--accent);
+  text-decoration: none; font-variant-caps: all-small-caps; letter-spacing: .08em; }
+a.cite:hover { text-decoration: underline; }
+.error { color: var(--warn); font-style: italic; text-align: center; }
+
+/* Tags */
+.tag { display: inline-block; font-size: 13px; padding: 0 6px; margin-top: 6px; margin-right: 4px;
+  font-variant-caps: all-small-caps; letter-spacing: .1em; border: 1px solid currentColor; }
+.tag.opt { color: var(--accent); }
+.tag.live { color: var(--ok); }
+.tag.moved { color: var(--warn); }
+
+/* Tour: one stop per page of the guide, picture framed, then its label and story */
+.tour-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 22px 0 6px; padding: 12px 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); }
+.tour-bar .sum { font-size: 16px; color: var(--ink); }
+.card { margin: 0; padding: 40px 0 34px; border-bottom: 1px solid var(--line); }
+.card.speaking .content { border-left: 2px solid var(--accent); padding-left: 16px; margin-left: -18px; }
+.card .photo { display: block; background: var(--frame); border: 1px solid var(--line); padding: 22px; }
+.card .photo img { display: block; width: 100%; max-height: 460px; object-fit: contain;
+ }
+/* Pictures of the objects an answer (not a tour) talks about */
+.answer-objects { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin: 6px 0 22px; }
+.answer-objects.single { grid-template-columns: 1fr; }
+.answer-objects .obj { display: block; background: var(--frame); border: 1px solid var(--line); padding: 12px;
+  color: var(--ink-2); text-decoration: none; font-size: 14px; line-height: 1.35; }
+.answer-objects .obj img { display: block; width: 100%; height: 150px; object-fit: contain; margin-bottom: 8px; }
+.answer-objects.single .obj { padding: 22px; font-size: 15px; }
+.answer-objects.single .obj img { height: auto; max-height: 460px; }
+.answer-objects .obj .none { font-style: italic; color: var(--muted); padding: 10px 0; }
+.card .photo.none { padding: 18px; text-align: center; color: var(--muted); font-size: 15px; font-style: italic; }
+.card .content { padding: 20px 0 0; }
+.stopno { display: block; font-size: 16px; color: var(--accent); margin-bottom: 2px; }
+.card.extra .photo { background: transparent; border-style: dashed; }
+.card.extra .photo img { max-height: 300px; }
+.msg.guide h2.extras-head { margin: 48px 0 0; font-size: 26px; padding-top: 20px; border-top: 1px solid var(--ink); }
+.extras-head + .more { margin-top: 4px; text-align: center; font-style: italic; }
+.msg.guide .card h3 { margin: 0; font-size: 28px; line-height: 1.2; }
+.card .orig { font-size: 18px; font-style: italic; color: var(--ink-2); margin-top: 4px; }
+.card .meta { font-size: 17px; color: var(--ink); margin: 8px 0 2px; }
+.card .meta em { font-style: normal; }
+.card .walk { font-size: 15px; color: var(--ink-2); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+  padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+.card .walk .tag { margin-top: 0; }
+.lookfor { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 12px 0; margin: 18px 0 0 !important;
+  font-style: italic; }
+.lookfor b { display: block; font-style: normal; font-weight: 400; color: var(--accent); font-size: 16px; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 18px; }
+.listen { border: 1px solid var(--ink); background: transparent; color: var(--ink); border-radius: 0;
+  padding: 6px 16px 7px 12px; font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.listen:hover { background: var(--ink); color: var(--bg); }
+.listen[aria-pressed="true"], .listen.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.listen.primary:hover { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.listen svg { flex: none; }
+
+/* AI reconstruction of a damaged object: The Met's photo and the AI image side by side, each labeled */
+.recon { margin: 14px 0 0; border: 1px solid var(--line); background: var(--surface); padding: 16px; }
+.recon-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.recon figure { margin: 0; display: flex; flex-direction: column; }
+.recon .pic { display: flex; align-items: center; justify-content: center; height: 340px; background: var(--frame); padding: 10px; }
+.recon .pic img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.recon figcaption { margin-top: 8px; font-size: 14px; text-align: center; font-variant-caps: all-small-caps; letter-spacing: .12em;
+  color: var(--ink-2); }
+.recon figure.ai figcaption { color: var(--accent); }
+.recon .recon-note { margin: 12px 0 0; font-size: 15px; color: var(--ink-2); }
+.recon .recon-note b { font-weight: 400; color: var(--accent); font-variant-caps: all-small-caps; letter-spacing: .1em; }
+.recon-wait { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-style: italic; color: var(--muted); }
+.recon-wait svg { animation: recon-spin 3s linear infinite; }
+@keyframes recon-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .recon-wait svg { animation: none; } }
+@media (max-width: 640px) { .recon .pic { height: 220px; } }
+.more { font-size: 15px; color: var(--ink-2); }
+.answer-tools { display: flex; justify-content: flex-end; margin: -4px 0 4px; }
+
+/* Show the work */
+details.work { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 12px; }
+details.work summary { cursor: pointer; font-size: 16px; color: var(--ink-2); }
+.agents { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0; margin-top: 12px;
+  border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.agent { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 10px 12px; min-width: 0; }
+.agent .name { font-size: 15px; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  font-variant-caps: all-small-caps; letter-spacing: .1em; }
+.agent .dot { width: 8px; height: 8px; background: var(--agent-guide); }
+.agent.research .dot { background: var(--agent-research); } .agent.writer .dot { background: var(--agent-writer); }
+.agent.check .dot { background: var(--agent-check); } .agent.story .dot { background: var(--agent-story); }
+
+/* Waiting */
+.thinking { color: var(--ink-2); font-size: 18px; font-style: italic; text-align: center; padding: 26px 0; }
+.thinking .elapsed { font-style: normal; font-size: 15px; color: var(--muted); margin-left: 8px; font-variant-numeric: tabular-nums; }
+
+/* Composer: a plain bar under a single rule */
+.composer { position: fixed; left: 0; right: 0; bottom: 0; background: var(--bg); border-top: 1px solid var(--rule);
+  padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); }
+.bar { display: flex; gap: 10px; align-items: flex-end; }
+.bar textarea { flex: 1; border: 0; border-bottom: 1px solid var(--ink); border-radius: 0; background: transparent;
+  color: var(--ink); font-size: 18px; resize: none; min-height: 40px; max-height: 140px; padding: 8px 2px; outline: none; }
+.bar textarea::placeholder { font-style: italic; color: var(--muted); }
+.bar textarea:focus { border-bottom-color: var(--accent); }
+.icon-btn, .send { border-radius: 0; height: 40px; min-width: 40px; cursor: pointer; }
+.icon-btn { border: 1px solid var(--line); background: transparent; color: var(--ink); display: grid; place-items: center; }
+.icon-btn:hover { border-color: var(--ink); }
+.mic[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
+  animation: mic-pulse 1.4s ease-in-out infinite; }
+.mic.busy { opacity: .55; cursor: progress; }
+@keyframes mic-pulse { 50% { box-shadow: 0 0 0 6px rgba(165, 42, 32, .18); } }
+@media (prefers-reduced-motion: reduce) { .mic[aria-pressed="true"] { animation: none; } }
+.send { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); padding: 0 20px; font-size: 17px; }
+.send:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.send:disabled { opacity: .45; cursor: default; }
+.preview { display: none; align-items: center; gap: 8px; font-size: 15px; font-style: italic; color: var(--ink-2); margin: 0 0 8px 2px; }
+.preview img { height: 44px; border: 1px solid var(--line); }
+.preview button { border: 0; background: none; color: var(--accent); cursor: pointer; font-size: 15px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+@media (max-width: 640px) {
+  body { font-size: 17px; }
+  header { padding-top: 32px; }
+  .how { grid-template-columns: 1fr; gap: 16px; margin-bottom: 32px; }
+  .card .photo { padding: 12px; }
+  .msg.guide .card h3 { font-size: 24px; }
+  .card.speaking .content { margin-left: -12px; padding-left: 10px; }
+}
+
+/* Stop card, top to bottom: where it is, listen, what to notice, then the story */
+.card { scroll-margin-top: 12px; }
+.wayfind { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 16px 0 0; padding: 12px 16px;
+  background: var(--surface-2); border-left: 3px solid var(--accent); }
+.wayfind .gal { display: inline-flex; align-items: center; gap: 7px; font-size: 23px; font-weight: 700; color: var(--ink);
+  letter-spacing: .02em; }
+.wayfind .gal svg { color: var(--accent); }
+.way-bits { font-size: 17px; color: var(--ink-2); }
+.way-flags { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.flag { display: inline-flex; align-items: center; gap: 4px; font-size: 15px; font-variant-caps: all-small-caps; letter-spacing: .1em; }
+.flag.live { color: var(--ok); }
+.flag.moved { color: var(--warn); }
+.flag.opt { color: var(--accent); }
+.card .actions { margin-top: 14px; }
+.listen.stop-listen { background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
+  font-size: 18px; padding: 10px 22px 11px 18px; }
+.listen.stop-listen:hover { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.msg.guide .lookfor { margin: 18px 0 0 !important; padding: 14px 18px; border: 0; border-left: 3px solid var(--accent);
+  background: var(--accent-soft); font-style: normal; font-size: 19px; line-height: 1.5; }
+.lookfor b { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; }
+.lookfor b svg { flex: none; }
+.story-wrap { margin-top: 24px; }
+.story-head { font-size: 16px; color: var(--ink-2); font-variant-caps: all-small-caps; letter-spacing: .14em;
+  border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-bottom: 4px; }
+.cite { font-size: 12px; color: var(--muted); opacity: .85; }
+
+/* Tour overview: the whole walk at a glance */
+.overview { margin: 26px 0 8px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); }
+.ov-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 0; }
+.ov-sum { font-size: 18px; color: var(--ink); }
+.ov-when { display: flex; align-items: center; gap: 5px; font-size: 15px; color: var(--ok); margin-top: 2px; }
+.ov-when::before { content: "\2713"; }
+.ov-label { display: block; font-size: 15px; color: var(--accent); font-variant-caps: all-small-caps; letter-spacing: .14em; }
+.ov-list { list-style: none; margin: 0; padding: 0 0 6px; }
+.ov-list a { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: baseline; padding: 9px 4px;
+  border-top: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+.ov-list a:hover { background: var(--surface); }
+.ov-n { font-size: 20px; color: var(--accent); text-align: center; }
+.ov-t { font-size: 18px; }
+.ov-g { font-size: 15px; color: var(--ink-2); white-space: nowrap; font-variant-caps: all-small-caps; letter-spacing: .08em; }
+.ov-sep { font-size: 15px; color: var(--accent); font-variant-caps: all-small-caps; letter-spacing: .14em;
+  padding: 14px 4px 4px; border-top: 1px solid var(--line); }
+.ov-list li.extra .ov-t { font-style: italic; color: var(--ink-2); }
+
+/* Before you go: folded */
+details.notes { margin: 30px 0 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 0; }
+.overview + details.notes { margin: 0 0 8px; border-top: 0; }
+details.notes summary { cursor: pointer; padding: 12px 0; font-size: 17px; color: var(--ink); list-style: none; }
+details.notes summary::-webkit-details-marker { display: none; }
+details.notes summary::after { content: " \25B8"; color: var(--accent); }
+details.notes[open] summary::after { content: " \25BE"; }
+details.notes ul { margin-top: 0; font-size: 16px; color: var(--ink-2); }
+
+/* A tour taking shape: the route is laid out first, and each stop's story arrives when it is written */
+.tour-preview .pv-progress { height: 1px; background: var(--line); margin: 0 0 4px; position: relative; overflow: hidden; }
+.tour-preview .pv-progress span { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent);
+  transition: width .8s ease; }
+.tour-preview .ov-sum .pv-ready { display: block; font-size: 15px; color: var(--ink-2); font-style: italic; margin-top: 2px; }
+.card.waiting .photo img { filter: grayscale(.85) opacity(.55); transition: filter 1.2s ease; }
+.card.waiting h3 { color: var(--ink-2); }
+.story-pending { margin-top: 24px; }
+.story-pending .sk { display: block; height: 11px; margin: 14px 0; background: linear-gradient(90deg,
+  var(--surface-2) 0%, var(--frame) 40%, var(--surface-2) 80%); background-size: 300% 100%;
+  animation: sheen 2.4s ease-in-out infinite; }
+.story-pending .sk:nth-child(3) { width: 92%; } .story-pending .sk:nth-child(4) { width: 64%; }
+.story-pending .pv-note { font-size: 15px; font-style: italic; color: var(--muted); margin: 10px 0 0; }
+@keyframes sheen { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+.card.arrived { animation: arrive .9s ease both; }
+.card.arrived .photo img { animation: develop 1.4s ease both; }
+@keyframes arrive { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes develop { from { filter: grayscale(.85) opacity(.55); } to { filter: none; } }
+.ov-list li.ready .ov-n::after { content: ""; display: block; width: 5px; height: 5px; margin: 2px auto 0; background: var(--accent); }
+.ov-list li.waiting .ov-t { color: var(--muted); }
+.step.limit { font-size: 15px; font-style: italic; color: var(--warn); padding: 6px 10px; }
+@media (prefers-reduced-motion: reduce) {
+  .story-pending .sk, .card.arrived, .card.arrived .photo img { animation: none; }
+  .tour-preview .pv-progress span { transition: none; }
+}
+
+@media (max-width: 640px) {
+  .listen.stop-listen, .ov-top .listen { width: 100%; justify-content: center; }
+  .wayfind .gal { font-size: 21px; }
+  .ov-list a { grid-template-columns: 26px 1fr; }
+  .ov-g { grid-column: 2; }
+}
+
+/* Behind the scenes: the agents' live steps */
+details.steps { margin: 6px 0 18px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule); }
+details.steps > summary { cursor: pointer; list-style: none; padding: 12px 0; display: flex; flex-wrap: wrap;
+  align-items: baseline; gap: 4px 12px; }
+details.steps > summary::-webkit-details-marker { display: none; }
+details.steps > summary::after { content: "\25B8"; color: var(--accent); margin-left: auto; }
+details.steps[open] > summary::after { content: "\25BE"; }
+details.steps .ov-label { display: inline; }
+.steps-count { font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums; }
+details.steps.live .steps-count::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px;
+  background: var(--accent); vertical-align: 2px; animation: blink 1.2s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { details.steps.live .steps-count::before { animation: none; } }
+.steps-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px;
+  max-height: 72vh; overflow: auto; padding: 0 0 12px; }
+.lane { border: 1px solid var(--line); background: var(--surface); min-width: 0; display: flex; flex-direction: column; }
+.lane.active { border-color: var(--accent); }
+.lane-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line);
+  font-size: 15px; font-variant-caps: all-small-caps; letter-spacing: .1em; }
+.lane-head .dot { width: 8px; height: 8px; flex: none; background: var(--agent-guide); }
+.lane.research .dot { background: var(--agent-research); } .lane.writer .dot { background: var(--agent-writer); }
+.lane.check .dot { background: var(--agent-check); } .lane.story .dot { background: var(--agent-story); }
+.lane-name { color: var(--ink); }
+.lane-count { color: var(--ink-2); }
+.lane-state { margin-left: auto; color: var(--muted); }
+.lane.active .lane-state { color: var(--accent); }
+.lane-steps { max-height: 340px; overflow: auto; padding: 4px 10px 8px; }
+.step { padding: 7px 0; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.45; }
+.step:first-child { border-top: 0; }
+.step-label { font-size: 13px; color: var(--accent); font-variant-caps: all-small-caps; letter-spacing: .12em; }
+.thought-head { font-weight: 700; color: var(--ink); }
+.thought-text { font-style: italic; color: var(--ink-2); cursor: pointer; display: -webkit-box; -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.thought-text.open { display: block; }
+.step .why { color: var(--ink); }
+.step .raw summary { cursor: pointer; list-style: none; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--ink-2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step .raw summary::-webkit-details-marker { display: none; }
+.step .raw summary code { font: inherit; }
+.step .raw .res { color: var(--ok); }
+.step.pending .raw .res { color: var(--accent); }
+.step .raw pre { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word;
+  max-height: 240px; overflow: auto; background: var(--bg); padding: 6px; margin: 4px 0 0; }
+@media (max-width: 640px) { .steps-body { grid-template-columns: 1fr; max-height: 64vh; } }
+
+/* Playing speed */
+.speed { border: 1px solid var(--ink); background: transparent; color: var(--ink); border-radius: 0; cursor: pointer;
+  min-width: 64px; padding: 6px 12px 7px; font-size: 17px; font-variant-numeric: tabular-nums; }
+.speed:hover { background: var(--ink); color: var(--bg); }
+.card .actions .speed { padding: 10px 14px 11px; font-size: 18px; }
+.ov-play { display: flex; gap: 8px; align-items: stretch; }
+.answer-tools { gap: 8px; }
+@media (max-width: 640px) {
+  .ov-play { width: 100%; }
+  .ov-top .ov-play .listen { flex: 1; width: auto; }
+  .card .actions { flex-wrap: nowrap; }
+  .listen.stop-listen { flex: 1; width: auto; }
+}
+
+/* The sentence being read aloud */
+.sent { transition: background-color .25s; }
+.sent.reading, .stopno.reading, h1.reading, h2.reading, h3.reading {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent); }
+@media (prefers-reduced-motion: reduce) { .sent { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="hero">
+      <div class="hero-text">
+        <h1>Docent AI</h1>
+        <p class="lede">Your personal guide to The Met. Tell it what you love and how much time you have: it searches the
+          44,000+ objects currently on view, across 421 galleries and 19 departments, and plans a walking tour just for you.</p>
+      </div>
+    </div>
+    <div class="showcase" id="showcase" hidden aria-roledescription="carousel" aria-label="Works on view now"></div>
+    <p class="sc-cap" id="showcaseCap" aria-live="off"></p>
+    <div class="how">
+      <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M7 18h6a3 3 0 0 0 0-6h-2a3 3 0 0 1 0-6h6"/></svg><b>Plan a tour</b><span>A walking route around what you love, with a story at every stop.</span></div>
+      <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><b>Snap or speak</b><span>Photograph an object or its label, or just ask out loud.</span></div>
+      <div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-6M3 20h18"/></svg><b>Ask the collection</b><span>Counts and locations, straight from the data.</span></div>
+    </div>
+    <div class="tours" id="chips">
+      <p class="tours-head">Start with a tour</p>
+      <div class="tour-grid">
+        <button class="tour-card" data-q="I have an hour and love animals, especially cats and horses. Plan me a tour.">
+          <span class="q">I have an hour and love animals, especially cats and horses. Plan me a tour.</span>
+        </button>
+        <button class="tour-card" data-q="How many works by Claude Monet are on view, and where? Plan me a tour of them.">
+          <span class="q">How many works by Claude Monet are on view, and where? Plan me a tour of them.</span>
+        </button>
+        <button class="tour-card" data-q="It's my first time at The Met and I've always been fascinated by ancient Egypt. Can you show me the highlights in about an hour?">
+          <span class="q">It's my first time at The Met and I've always been fascinated by ancient Egypt. Can you show me the highlights in about an hour?</span>
+        </button>
+        <button class="tour-card" data-q="Can you plan a 45-minute tour of Greek and Roman gods and heroes?">
+          <span class="q">Can you plan a 45-minute tour of Greek and Roman gods and heroes?</span>
+        </button>
+        <button class="tour-card" data-q="I'd love to spend 90 minutes with Chinese art, especially ceramics and landscape paintings.">
+          <span class="q">I'd love to spend 90 minutes with Chinese art, especially ceramics and landscape paintings.</span>
+        </button>
+      </div>
+    </div>
+    <p class="fine">An independent project built on The Met’s Open Access data. Not affiliated with The Metropolitan Museum of Art.</p>
+  </header>
+
+  <main id="thread" aria-live="polite"></main>
+</div>
+
+<div class="composer">
+  <div class="wrap">
+    <div class="preview" id="preview"><img alt="Photo to send"><span>Photo attached</span><button id="clearImg" type="button">Remove</button></div>
+    <form class="bar" id="form">
+      <label class="icon-btn" title="Take or choose a photo: an object, its label, or anything you're curious about">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        <span class="sr">Add a photo</span>
+        <input type="file" id="photo" accept="image/*" hidden>
+      </label>
+      <button class="icon-btn mic" id="mic" type="button" title="Speak your question" aria-pressed="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
+        <span class="sr">Speak</span>
+      </button>
+      <textarea id="input" rows="1" placeholder="Plan a tour, ask about anything, or snap a photo…" aria-label="Message"></textarea>
+      <button class="send" id="send" type="submit">Ask</button>
+    </form>
+  </div>
+</div>
+
+<script>
+const thread = document.getElementById("thread");
+const form = document.getElementById("form");
+const input = document.getElementById("input");
+const send = document.getElementById("send");
+const photo = document.getElementById("photo");
+const preview = document.getElementById("preview");
+let sessionId = null;
+let imageData = null;
+
+// Keep the conversation across a reload (this tab only): the session id and what was shown
+let shown = [];
+try {
+  sessionId = sessionStorage.getItem("guide-session");
+  shown = JSON.parse(sessionStorage.getItem("guide-thread") || "[]");
+} catch (e) { shown = []; }
+function remember(item) {
+  shown.push(item);
+  try { sessionStorage.setItem("guide-thread", JSON.stringify(shown.slice(-30))); } catch (e) {}
+}
+window.addEventListener("DOMContentLoaded", () => {
+  if (!shown.length) return;
+  document.getElementById("chips").style.display = "none";
+  document.body.classList.add("started");
+  shown.forEach(m => m.role === "user" ? addUser(m.text, null) : thread.appendChild(renderGuide(m.data, m.events, m.seconds)));
+});
+
+
+document.querySelectorAll(".tour-card").forEach(c => c.addEventListener("click", () => { input.value = c.dataset.q; ask(); }));
+
+// Landing showcase: random Met highlights on view. Each sits at a place relative to the current one
+// (0 = center, ±1 beside it, ±2 further out); stepping on moves them all one place, so the next work comes
+// forward, grows and brightens while the last one steps back. Works more than two places away are hidden,
+// which is where one wraps from the far left to the far right unseen. As a work leaves on the left, its
+// frame takes a new work from the collection, so the carousel keeps showing new pieces instead of looping.
+(async function showcase() {
+  const stage = document.getElementById("showcase"), cap = document.getElementById("showcaseCap");
+  const seen = new Set(), queue = [];
+  let fetching = false;
+  const named = o => ({ ...o, name: String(o.title || "").split("|").pop().trim() });
+  async function refill() {
+    if (fetching) return;
+    fetching = true;
+    try {
+      const batch = await fetch("/featured?n=24").then(r => r.ok ? r.json() : []);
+      batch.forEach(o => { if (!seen.has(o.object_id)) { seen.add(o.object_id); queue.push(named(o)); } });
+    } catch (e) {}
+    fetching = false;
+  }
+  await refill();
+  const n = 12;
+  if (queue.length < n) return;
+  const items = queue.splice(0, n);
+  const nodes = items.map((o, i) => {
+    const b = el("button", "sc-item"), img = el("img");
+    img.src = o.image_small_url; img.alt = o.name;
+    b.type = "button"; b.append(img);
+    b.addEventListener("click", () => {
+      if (i === cur) window.open(items[i].met_url, "_blank", "noopener"); else { go(i); restart(); }
+    });
+    stage.append(b);
+    return b;
+  });
+  let cur = 0, timer = null, paused = false;
+  const small = () => matchMedia("(max-width: 640px)").matches;
+  function place() {
+    const gap = small() ? 190 : 290;
+    nodes.forEach((b, i) => {
+      let rel = (i - cur + n) % n;
+      if (rel > n / 2) rel -= n;
+      const d = Math.abs(rel);
+      if (rel === -3 && queue.length) {  // just left the view: hang a new work in this frame
+        items[i] = queue.shift();
+        const img = b.querySelector("img"); img.src = items[i].image_small_url; img.alt = items[i].name;
+      }
+      const scale = d === 0 ? 1 : d === 1 ? .74 : .6;
+      b.style.transform = `translateX(${rel * gap}px) scale(${scale})`;
+      b.style.opacity = d === 0 ? 1 : d === 1 ? .6 : d === 2 ? .28 : 0;
+      b.style.zIndex = 10 - d;
+      b.classList.toggle("center", d === 0);
+      b.classList.toggle("side", d > 0);
+      b.tabIndex = d <= 1 ? 0 : -1;
+      b.setAttribute("aria-hidden", d > 1 ? "true" : "false");
+      b.title = d === 0 ? `${items[i].name} · Open The Met's page` : items[i].name;
+    });
+    const o = items[cur];
+    cap.classList.add("fading");
+    setTimeout(() => {
+      const t = el("span", "t"), m = el("span", "m"), g = el("span", "g");
+      t.textContent = o.name;
+      m.textContent = [o.maker, o.object_date].filter(Boolean).join(", ");
+      g.textContent = o.gallery ? `Gallery ${o.gallery}` : "";
+      cap.replaceChildren(t, m, g);
+      cap.classList.remove("fading");
+    }, 300);
+  }
+  function go(i) { cur = (i + n) % n; place(); if (queue.length < 8) refill(); }
+  const slow = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function restart() {
+    clearInterval(timer);
+    timer = setInterval(() => {
+      if (!paused && !document.hidden && !document.body.classList.contains("started")) go(cur + 1);
+    }, slow ? 9000 : 3000);
+  }
+  stage.addEventListener("mouseenter", () => paused = true);
+  stage.addEventListener("mouseleave", () => paused = false);
+  stage.addEventListener("focusin", () => paused = true);
+  stage.addEventListener("focusout", () => paused = false);
+  addEventListener("resize", place);
+  stage.hidden = false;
+  place();
+  restart();
+})();
+form.addEventListener("submit", e => { e.preventDefault(); ask(); });
+input.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } });
+if (matchMedia("(max-width: 640px)").matches) input.placeholder = "Ask the docent…";
+input.addEventListener("input", () => { input.style.height = "auto"; input.style.height = input.scrollHeight + "px"; });
+
+// Shrink the photo before sending: a label only needs to be legible
+photo.addEventListener("change", () => {
+  const file = photo.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width * scale; canvas.height = img.height * scale;
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    imageData = canvas.toDataURL("image/jpeg", 0.85);
+    preview.querySelector("img").src = imageData;
+    preview.style.display = "flex";
+    URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(file);
+});
+document.getElementById("clearImg").addEventListener("click", clearImage);
+
+// Voice: record from the microphone as plain 16 kHz WAV (any browser), then Gemini 3.5 Transcribe turns it
+// into text in the message box, ready to edit or send. Tap to start, tap again to stop (stops by itself
+// after 60 s).
+const mic = document.getElementById("mic");
+const Voice = {
+  on: false,
+  async start() {
+    try { this.stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch (e) { input.placeholder = "Microphone not available. You can type instead."; return; }
+    this.ctx = new AudioContext({ sampleRate: 16000 });
+    const src = this.ctx.createMediaStreamSource(this.stream);
+    this.node = this.ctx.createScriptProcessor(4096, 1, 1);
+    this.chunks = [];
+    this.node.onaudioprocess = e => this.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    src.connect(this.node); this.node.connect(this.ctx.destination);
+    this.on = true; mic.setAttribute("aria-pressed", "true"); mic.title = "Listening… tap to stop";
+    this.was = input.placeholder; input.placeholder = "Listening… tap the microphone when you're done";
+    this.timer = setTimeout(() => this.stop(), 60000);
+  },
+  async stop() {
+    if (!this.on) return;
+    this.on = false; clearTimeout(this.timer);
+    mic.setAttribute("aria-pressed", "false"); mic.title = "Speak your question";
+    this.node.disconnect(); this.stream.getTracks().forEach(t => t.stop());
+    const rate = this.ctx.sampleRate; await this.ctx.close();
+    const n = this.chunks.reduce((k, c) => k + c.length, 0);
+    if (n < rate * 0.3) { input.placeholder = this.was; return; }  // a tap, not speech
+    const pcm = new Int16Array(n); let o = 0;
+    for (const c of this.chunks) for (let i = 0; i < c.length; i++) pcm[o++] = Math.max(-1, Math.min(1, c[i])) * 0x7fff;
+    const head = new DataView(new ArrayBuffer(44)), w = (at, str) => [...str].forEach((ch, i) => head.setUint8(at + i, ch.charCodeAt(0)));
+    w(0, "RIFF"); head.setUint32(4, 36 + pcm.byteLength, true); w(8, "WAVEfmt "); head.setUint32(16, 16, true);
+    head.setUint16(20, 1, true); head.setUint16(22, 1, true); head.setUint32(24, rate, true); head.setUint32(28, rate * 2, true);
+    head.setUint16(32, 2, true); head.setUint16(34, 16, true); w(36, "data"); head.setUint32(40, pcm.byteLength, true);
+    const bytes = new Uint8Array(await new Blob([head, pcm]).arrayBuffer());
+    let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    mic.classList.add("busy"); input.placeholder = "Writing down what you said…";
+    try {
+      const r = await fetch("/transcribe", { method: "POST", headers: { "Content-Type": "application/json" },
+                                             body: JSON.stringify({ audio: btoa(bin) }) }).then(x => x.json());
+      if (r.text) {
+        input.value = (input.value.trim() ? input.value.trim() + " " : "") + r.text;
+        input.dispatchEvent(new Event("input")); input.focus();
+      }
+    } catch (e) {}
+    mic.classList.remove("busy"); input.placeholder = this.was;
+  },
+};
+mic.addEventListener("click", () => Voice.on ? Voice.stop() : Voice.start());
+function clearImage() { imageData = null; photo.value = ""; preview.style.display = "none"; }
+
+async function ask() {
+  const text = input.value.trim();
+  if (!text && !imageData) return;
+  document.getElementById("chips").style.display = "none";
+  document.body.classList.add("started");
+  addUser(text, imageData);
+  remember({ role: "user", text: text || "(photo)" });
+  const body = { message: text || "What is this? (a photo I just took)", session_id: sessionId, image: imageData };
+  input.value = ""; input.style.height = "auto"; clearImage();
+  send.disabled = true;
+
+  // The reply starts as the live panel of the agents' own steps, filled as the server sends them
+  const pending = el("div", "msg guide");
+  const steps = new Steps(true);
+  pending.appendChild(steps.el);
+  thread.appendChild(pending);
+  pending.scrollIntoView({ behavior: "smooth", block: "start" });
+  const events = [], started = Date.now();
+  let tourView = null;
+
+  try {
+    const r = await fetch("/chat/stream", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok || !r.body) throw new Error(`The server answered ${r.status}`);
+    const reader = r.body.getReader(), decoder = new TextDecoder();
+    let buffer = "", data = null;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let cut;
+      while ((cut = buffer.indexOf("\n\n")) >= 0) {
+        const line = buffer.slice(0, cut).split("\n").find(l => l.startsWith("data: "));
+        buffer = buffer.slice(cut + 2);
+        if (!line) continue;  // a keep-alive comment
+        const e = JSON.parse(line.slice(6));
+        if (e.type === "done") { const { type, ...rest } = e; data = rest; }
+        else if (e.type === "start") { sessionId = e.session_id; }
+        else if (e.type === "stop") { if (tourView) tourView.fill(e); }
+        else {
+          events.push(e); steps.add(e);
+          if (e.type === "result" && e.name === "plan_route" && e.agent === "Guide") {
+            let route = null;
+            try { route = JSON.parse(e.result); } catch (err) {}
+            if (route && (route.stops || []).length) {
+              const next = new TourPreview(route);
+              if (tourView) tourView.el.replaceWith(next.el); else pending.appendChild(next.el);
+              tourView = next;
+              steps.el.open = false;  // the stage moves to the tour; the steps stay one tap away
+            }
+          }
+        }
+      }
+    }
+    if (!data) throw new Error("the connection closed before the answer arrived");
+    sessionId = data.session_id;
+    try { sessionStorage.setItem("guide-session", sessionId); } catch (e) {}
+    const seconds = Math.round((Date.now() - started) / 1000);
+    steps.finish(seconds);
+    // Swap in the finished tour without moving the stop the visitor is reading
+    const anchor = tourView && tourView.readingCard();
+    const before = anchor && anchor.getBoundingClientRect().top;
+    const done = renderGuide(data, events, seconds);
+    pending.replaceWith(done);
+    const same = anchor && done.querySelector(`#${anchor.id}`);
+    if (same) window.scrollBy(0, same.getBoundingClientRect().top - before);
+    remember({ role: "guide", data, events: events.map(slimEvent), seconds });
+  } catch (e) {
+    steps.finish();
+    const err = el("p", "error");
+    err.textContent = `Couldn't reach the guide: ${e.message}. Try again in a moment.`;
+    pending.appendChild(err);
+  } finally {
+    send.disabled = false; input.focus();
+  }
+}
+
+// Saved replies keep their steps, with long results shortened to fit the browser's storage
+function slimEvent(e) {
+  return e.type === "result" ? { ...e, brief: brief(e.result), result: String(e.result || "").slice(0, 600) } : e;
+}
+
+function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
+
+function addUser(text, img) {
+  const m = el("div", "msg user");
+  if (img) { const i = el("img"); i.src = img; i.alt = "Your photo"; m.appendChild(i); }
+  if (text) m.appendChild(document.createTextNode(text));
+  thread.appendChild(m);
+  m.scrollIntoView({ behavior: "smooth", block: "end" });
+}
+
+// [met:123] -> the object's Met page; [wikipedia:Title] -> the article; [data] -> a note on the snapshot.
+// Several sources in one bracket ([met:1, wikipedia:Barding]) become one chip each.
+function citeLinks(md) {
+  return md.replace(/\[((?:met|wikipedia):[^\]]+|data)\]/g, (_, group) =>
+    group.split(/[,;]\s*(?=(?:met|wikipedia):|data\b)/).map(part => {
+      const i = part.indexOf(":"), kind = (i < 0 ? part : part.slice(0, i)).trim(), ref = i < 0 ? "" : part.slice(i + 1).trim();
+      if (kind === "met" && /^\d+$/.test(ref))
+        return ` <a class="cite" href="https://www.metmuseum.org/art/collection/search/${ref}" target="_blank" rel="noopener" title="The Met's record for this object">Met</a>`;
+      if (kind === "wikipedia" && ref)
+        return ` <a class="cite" href="https://en.wikipedia.org/wiki/${encodeURIComponent(ref.replace(/ /g, "_"))}" target="_blank" rel="noopener" title="Wikipedia: ${ref.replace(/"/g, "&quot;")}">Wikipedia</a>`;
+      if (kind === "data")
+        return ' <span class="cite" title="From The Met\'s Open Access collection data">data</span>';
+      return "";
+    }).join(""));
+}
+
+function renderGuide(data, events, seconds) {
+  const m = el("div", "msg guide");
+  // Behind the scenes, folded: the steps streamed live, or for older replies, rebuilt from tool_calls
+  const steps = new Steps(false);
+  (events && events.length ? events : eventsFromCalls(data.tool_calls || [])).forEach(e => steps.add(e));
+  steps.finish(seconds);
+  if (steps.lanes.size) m.appendChild(steps.el);
+  const html = DOMPurify.sanitize(marked.parse(citeLinks(data.response || ""), { breaks: true }), { ADD_ATTR: ["target"] });
+  const body = el("div"); body.innerHTML = html;
+  dedupeChips(body);
+
+  // A tour: turn each "### n. Title — Gallery N" section into a card with its picture, story and audio
+  let route = null;
+  const routes = (data.tool_calls || []).filter(c => c.name === "plan_route");
+  if (routes.length) { try { route = JSON.parse(routes[routes.length - 1].result); } catch (e) {} }
+  const cards = route ? buildCards(body, route) : [];
+  foldNotes(body);
+  if (cards.length) {
+    const overview = tourBar(route, cards);
+    body.querySelector(".card").before(overview);
+    const notes = body.querySelector("details.notes");
+    if (notes) overview.after(notes);
+  } else if (Speech.ok && (data.response || "").length > 120) {
+    const tools = el("div", "answer-tools");
+    tools.append(listenButton(() => [{ segs: answerSegs(body) }], body, "Listen"), speedButton());
+    body.prepend(tools);
+  }
+  if (!cards.length) answerPictures(body);
+  m.appendChild(body);
+  return m;
+}
+
+// An answer that isn't a tour: show the objects it cites, with their pictures, linked to The Met
+function answerPictures(body) {
+  const ids = [...new Set([...body.querySelectorAll("a.cite")]
+    .map(a => (a.href.match(/search\/(\d+)/) || [])[1]).filter(Boolean))].slice(0, 6);
+  if (!ids.length) return;
+  fetch("/objects?ids=" + ids.join(",")).then(r => r.ok ? r.json() : []).then(objs => {
+    const shown = objs;
+    if (!shown.length) return;
+    const wrap = el("div", "answer-objects" + (shown.length === 1 ? " single" : ""));
+    shown.forEach(o => {
+      const a = el("a", "obj");
+      if (o.met_url) { a.href = o.met_url; a.target = "_blank"; a.rel = "noopener"; a.title = "Open The Met's page for this object"; }
+      const title = String(o.title || "").split("|").pop().trim();
+      const cap = el("div"); cap.textContent = title + (o.gallery ? ` · Gallery ${o.gallery}` : "");
+      if (o.image_small_url) {
+        const img = el("img"); img.src = o.image_small_url; img.alt = title; img.loading = "lazy";
+        a.append(img);
+      } else {  // as on a tour card: say why there is no picture
+        const none = el("div", "none");
+        none.textContent = "No open-access image of this object. The Met shares pictures only of public-domain works.";
+        a.append(none);
+      }
+      a.append(cap);
+      wrap.append(a);
+    });
+    const tools = body.querySelector(".answer-tools");
+    tools ? tools.after(wrap) : body.prepend(wrap);
+  }).catch(() => {});
+}
+
+// One chip per source per paragraph: keep the last mention, drop the repeats before it
+function dedupeChips(body) {
+  body.querySelectorAll("p, li").forEach(block => {
+    const seen = new Set();
+    [...block.querySelectorAll("a.cite")].reverse().forEach(a => {
+      if (!seen.has(a.href)) { seen.add(a.href); return; }
+      const before = a.previousSibling;  // the space added before the chip
+      if (before && before.nodeType === 3) before.textContent = before.textContent.replace(/\s+$/, "");
+      a.remove();
+    });
+  });
+}
+
+// --- Tour cards ---
+
+const STOP_HEAD = /^\s*(E?\d+)\.\s*(.+?)\s+[—–-]\s+Gallery\s+(.+?)\s*(?:\((?:optional|if time allows)\))?\s*$/i;
+
+function buildCards(body, route) {
+  const stops = [...(route.stops || []), ...(route.extras || []), ...(route.cloisters_stops || [])];
+  const byId = Object.fromEntries(stops.map(s => [String(s.object_id), s]));
+  const cards = [];
+  [...body.querySelectorAll("h3")].forEach(h => {
+    const m = h.textContent.match(STOP_HEAD);
+    if (!m) return;
+    // The section: everything after the heading, up to the next heading or rule
+    const section = [];
+    for (let n = h.nextSibling; n && !/^(H1|H2|H3|HR)$/.test(n.nodeName); n = n.nextSibling) section.push(n);
+    const ids = section.flatMap(n => n.querySelectorAll ? [...n.querySelectorAll("a.cite")] : [])
+      .map(a => (a.href.match(/search\/(\d+)/) || [])[1]).filter(Boolean);
+    const stop = byId[ids.find(id => byId[id])] || (/^\d+$/.test(m[1]) ? (route.stops || [])[+m[1] - 1] : null) || {};
+    const card = makeCard(m[1], m[2], m[3], { ...stop, checked_at: route.checked_at }, section);
+    h.replaceWith(card);
+    cards.push(card);
+  });
+  // Extras get their own section after the main route
+  const extras = cards.filter(c => c.classList.contains("extra"));
+  if (extras.length) {
+    let head = [...body.querySelectorAll("h1, h2")].find(x => /extra/i.test(x.textContent));
+    if (!head) { head = el("h2"); head.textContent = "Extras, if you have time"; extras[0].before(head); }
+    head.classList.add("extras-head");
+    const note = el("p", "more");
+    note.textContent = "The walk continues from the last stop, so you can keep going for as long as you like.";
+    head.after(note);
+  }
+  return cards;
+}
+
+const ICON = {
+  pin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11.1a6.5 6.5 0 0 1 13 0C18.5 14.9 12 21 12 21z"/><circle cx="12" cy="9.9" r="2.3"/></svg>',
+  eye: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>',
+};
+
+function makeCard(n, rawTitle, gallery, stop, section) {
+  const card = el("section", "card" + (stop.extra || /^E/.test(n) ? " extra" : ""));
+  card.id = "stop-" + n;
+  // Titles in two scripts come as "原文|English": show the English, keep the original underneath
+  const [orig, english] = rawTitle.includes("|") ? rawTitle.split("|", 2) : ["", rawTitle];
+  card.dataset.title = english.trim();
+  card.dataset.n = n;
+  card.dataset.gallery = stop.gallery || gallery;
+  if (stop.arrive_after_minutes !== undefined) card.dataset.minute = Math.round(stop.arrive_after_minutes);
+
+  const photo = el("a", "photo" + (stop.image_small_url ? "" : " none"));
+  if (stop.met_url) { photo.href = stop.met_url; photo.target = "_blank"; photo.rel = "noopener"; photo.title = "Open The Met's page for this object"; }
+  if (stop.image_small_url) {
+    const img = el("img"); img.src = stop.image_small_url; img.alt = english.trim(); img.loading = "lazy";
+    photo.append(img);
+  } else {
+    photo.append(document.createTextNode("No open-access image of this object. The Met shares pictures only of public-domain works."));
+  }
+
+  const content = el("div", "content");
+  const no = el("span", "stopno");
+  no.textContent = /^E/.test(n) ? `Extra ${String(n).replace(/^E/, "")}` : `Stop ${n}`;
+  const h = el("h3"); h.textContent = english.trim(); content.append(no, h);
+  if (orig.trim()) { const o = el("div", "orig"); o.textContent = orig.trim(); content.appendChild(o); }
+
+  // The first paragraph starts with "*maker, date* · about N min in", then a line break, then the story
+  const first = section.find(nd => nd.nodeName === "P");
+  if (first && first.firstElementChild && first.firstElementChild.nodeName === "EM" && first.firstChild === first.firstElementChild) {
+    const meta = el("div", "meta");
+    while (first.firstChild && first.firstChild.nodeName !== "BR") meta.appendChild(first.firstChild);
+    if (first.firstChild) first.firstChild.remove();
+    meta.textContent = meta.textContent.replace(/\s*·\s*(about\s+[\d.]+\s*min in|near stop)[\s\S]*$/i, "").trim();
+    content.appendChild(meta);
+  }
+
+  // Where to go: the gallery first and large, then floor and walk
+  const way = el("div", "wayfind");
+  const gal = el("span", "gal"); gal.innerHTML = ICON.pin;
+  gal.appendChild(document.createTextNode(`Gallery ${stop.gallery || gallery}`));
+  way.appendChild(gal);
+  const bits = [];
+  if (stop.floor) bits.push(`Floor ${stop.floor}`);
+  if (stop.walk_minutes_before) bits.push(`${Math.round(stop.walk_minutes_before)} min walk`);
+  if (stop.arrive_after_minutes !== undefined) bits.push(`${Math.round(stop.arrive_after_minutes)} min into the tour`);
+  if (bits.length) { const d = el("span", "way-bits"); d.textContent = bits.join(" · "); way.appendChild(d); }
+  const flags = el("span", "way-flags");
+  if (stop.live_check === "on_view") {
+    const f = el("span", "flag live"); f.innerHTML = ICON.check; f.title = route_checked(stop.checked_at) || "Checked with The Met's live data";
+    f.appendChild(document.createTextNode("On view")); flags.appendChild(f);
+  }
+  if (stop.moved_from) { const f = el("span", "flag moved"); f.textContent = `Moved from ${stop.moved_from}`; flags.appendChild(f); }
+  if (stop.optional) { const f = el("span", "flag opt"); f.textContent = "If time allows"; flags.appendChild(f); }
+  if (flags.childNodes.length) way.appendChild(flags);
+  content.appendChild(way);
+
+  // What to notice, then the Listen button, then the story
+  const story = el("div", "story");
+  let look = null;
+  section.forEach(nd => {
+    if (nd.nodeName === "P" && /^\s*look for:/i.test(nd.textContent)) {
+      nd.classList.add("lookfor");
+      const t = nd.firstChild;
+      if (t && t.nodeType === 3) {
+        // "Look for: Look for the..." / "Look for: Notice the..." -> "The..."
+        let rest = t.textContent.replace(/^\s*look for:\s*/i, "").replace(/^(look for|notice|see)\s+/i, "");
+        t.textContent = rest.charAt(0).toUpperCase() + rest.slice(1);
+        const label = el("b"); label.innerHTML = ICON.eye; label.appendChild(document.createTextNode("Look for"));
+        nd.prepend(label);
+      }
+      look = nd;
+      return;
+    }
+    if (!nd.textContent.trim()) return;  // whitespace, or the paragraph the meta line came from
+    story.appendChild(nd);
+  });
+  if (look) content.appendChild(look);
+  const actions = el("div", "actions");
+  if (Speech.ok) actions.append(listenButton(() => [{ segs: cardSegs(card, n), card }], card, "Listen to this stop", "stop-listen"), speedButton());
+  content.appendChild(actions);
+  if (stop.object_id && stop.image_small_url) autoRecon(stop, english.trim(), actions);
+  if (story.childNodes.length) {
+    const wrap = el("div", "story-wrap");
+    const head = el("div", "story-head"); head.textContent = "The story";
+    wrap.append(head, story);
+    content.appendChild(wrap);
+  }
+  card.append(photo, content);
+  return card;
+}
+
+// AI reconstructions: started by the server when the route is planned. Each object is checked once,
+// every few seconds until it is ready, however many cards show it (the live preview, then the tour).
+const reconResults = new Map();
+function reconFor(id) {
+  if (!reconResults.has(id)) reconResults.set(id, (async () => {
+    for (let i = 0; i < 75; i++) {  // about five minutes
+      try {
+        const r = await fetch(`/reconstruction/${id}/status`).then(x => x.json());
+        if (r.status !== "pending") return r;
+      } catch (e) {}
+      await new Promise(res => setTimeout(res, 4000));
+    }
+    return { status: "error" };
+  })());
+  return reconResults.get(id);
+}
+
+// On a stop card: a quiet note while the reconstruction is made; then, for an object that has changed
+// since it was made, The Met's photo and the reconstruction side by side, with a button to hide it.
+// Objects that survive whole show nothing.
+const RECON_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/></svg>';
+function autoRecon(stop, title, actions) {
+  const waiting = el("span", "recon-wait");
+  waiting.innerHTML = RECON_ICON + "<span>Checking whether this has changed since it was made…</span>";
+  actions.append(waiting);
+  reconFor(stop.object_id).then(r => {
+    waiting.remove();
+    if (r.status !== "ok") return;
+    const panel = el("div", "recon");
+    const pair = el("div", "recon-pair");
+    const fig = (src, cap, cls, alt) => {
+      const f = el("figure", cls), pic = el("div", "pic"), img = el("img"), c = el("figcaption");
+      img.src = src; img.alt = alt; img.loading = "lazy"; pic.append(img); c.textContent = cap; f.append(pic, c); return f;
+    };
+    pair.append(fig(stop.image_small_url, "As it survives · photo: The Met", "real", title),
+                fig(r.image, "AI reconstruction · how it may have looked new", "ai", `AI reconstruction of ${title}`));
+    const note = el("p", "recon-note");
+    const tag = el("b"); tag.textContent = "Added by AI: ";
+    note.append(tag, document.createTextNode(`${(r.added || []).join(", ") || "the missing parts"}. ` +
+      `An illustration from The Met's photo and record, not the real object, and not verified by The Met.`));
+    panel.append(pair, note);
+    actions.after(panel);
+    const b = el("button", "listen recon-btn");
+    b.type = "button";
+    const label = t => { b.innerHTML = RECON_ICON + `<span>${t}</span>`; };
+    label("Hide reconstruction");
+    b.addEventListener("click", () => {
+      const shown = !panel.hidden;
+      panel.hidden = shown;
+      label(shown ? "Show AI reconstruction" : "Hide reconstruction");
+    });
+    actions.append(b);
+  });
+}
+
+// "Stops checked live with The Met at 4:12 PM, Nov 11", in the visitor's own time zone
+function route_checked(iso) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || isNaN(d)) return "";
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const day = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `Stops checked live with The Met at ${time}, ${day}`;
+}
+
+// The whole walk at a glance: every stop, its gallery and when you reach it; tap one to jump there
+function tourBar(route, cards) {
+  const nav = el("nav", "overview");
+  nav.setAttribute("aria-label", "Stops on this tour");
+  const top = el("div", "ov-top");
+  const sum = el("div", "ov-sum");
+  const main = cards.filter(c => !c.classList.contains("extra")), extras = cards.filter(c => c.classList.contains("extra"));
+  sum.innerHTML = `<span class="ov-label">Your tour</span>`;
+  sum.appendChild(document.createTextNode(`${main.length} stops · about ${route.total_minutes} min` +
+    (extras.length ? ` · ${extras.length} extra${extras.length > 1 ? "s" : ""} if you have time` : "")));
+  const when = route_checked(route.checked_at);
+  if (when) { const w = el("span", "ov-when"); w.textContent = when; sum.appendChild(w); }
+  top.appendChild(sum);
+  if (Speech.ok) {
+    const play = el("div", "ov-play");
+    play.append(listenButton(() => main.map((c, i) => ({ segs: cardSegs(c, i + 1), card: c })), null, "Play the whole tour", "primary"),
+                speedButton());
+    top.appendChild(play);
+  }
+  nav.appendChild(top);
+  const list = el("ol", "ov-list");
+  cards.forEach((c, i) => {
+    if (c.classList.contains("extra") && !(cards[i - 1] || {classList: {contains: () => true}}).classList.contains("extra")) {
+      const sep = el("li", "ov-sep"); sep.textContent = "If you have time"; list.appendChild(sep);
+    }
+    const li = el("li", c.classList.contains("extra") ? "extra" : "");
+    const a = el("a"); a.href = "#" + c.id;
+    a.addEventListener("click", e => { e.preventDefault(); c.scrollIntoView({ behavior: "smooth", block: "start" }); });
+    const num = el("span", "ov-n"); num.textContent = /^E/.test(c.dataset.n) ? "+" : c.dataset.n;
+    const t = el("span", "ov-t"); t.textContent = c.dataset.title;
+    const g = el("span", "ov-g"); g.textContent = `Gallery ${c.dataset.gallery}`;
+    a.append(num, t, g);
+    li.appendChild(a);
+    list.appendChild(li);
+  });
+  nav.appendChild(list);
+  return nav;
+}
+
+// While the stories are written: the route laid out at once, each stop's card filling in as its
+// Storyteller finishes (stories finish in any order; each lands in its place on the walk)
+class TourPreview {
+  constructor(route) {
+    this.route = route;
+    this.el = el("div", "tour-preview");
+    const main = route.stops || [], extras = route.extras || [], cloisters = route.cloisters_stops || [];
+    const stops = [...main.map((s, i) => [String(i + 1), s]), ...extras.map((s, i) => [String(main.length + i + 1), { ...s, extra: true }]),
+                   ...cloisters.map((s, i) => ["C" + (i + 1), s])];
+    this.total = stops.length; this.ready = 0;
+    const nav = el("nav", "overview");
+    const top = el("div", "ov-top"), sum = el("div", "ov-sum");
+    sum.innerHTML = '<span class="ov-label">Your tour is taking shape</span>';
+    sum.appendChild(document.createTextNode(`${main.length} stops · about ${route.total_minutes} min` +
+      (extras.length ? ` · ${extras.length} extra${extras.length > 1 ? "s" : ""} if you have time` : "")));
+    this.status = el("span", "pv-ready"); sum.appendChild(this.status);
+    top.appendChild(sum); nav.appendChild(top);
+    const bar = el("div", "pv-progress"); this.fillBar = el("span"); bar.appendChild(this.fillBar); nav.appendChild(bar);
+    const list = el("ol", "ov-list");
+    this.cards = {}; this.items = {};
+    const cards = el("div");
+    stops.forEach(([n, s], k) => {
+      if (s.extra && !(stops[k - 1] || [0, {}])[1].extra) {
+        const sep = el("li", "ov-sep"); sep.textContent = "If you have time"; list.appendChild(sep);
+        const h = el("h2", "extras-head"); h.textContent = "Extras, if you have time"; cards.appendChild(h);
+      }
+      const card = makeCard(n, s.title || "", s.gallery, { ...s, checked_at: route.checked_at }, []);
+      card.classList.add("waiting");
+      card.querySelector(".actions")?.remove();
+      const wait = el("div", "story-pending");
+      const head = el("div", "story-head"); head.textContent = "The story";
+      wait.append(head, el("span", "sk"), el("span", "sk"), el("span", "sk"));
+      const note = el("p", "pv-note"); note.textContent = "A Storyteller is reading up on this one.";
+      wait.appendChild(note);
+      card.querySelector(".content").appendChild(wait);
+      cards.appendChild(card);
+      this.cards[n] = card;
+      const li = el("li", "waiting" + (s.extra ? " extra" : "")), a = el("a");
+      a.href = "#" + card.id;
+      a.addEventListener("click", ev => { ev.preventDefault(); this.cards[n].scrollIntoView({ behavior: "smooth", block: "start" }); });
+      const num = el("span", "ov-n"); num.textContent = s.extra ? "+" : n;
+      const t = el("span", "ov-t"); t.textContent = card.dataset.title;
+      const g = el("span", "ov-g"); g.textContent = `Gallery ${card.dataset.gallery}`;
+      a.append(num, t, g); li.appendChild(a); list.appendChild(li);
+      this.items[n] = li;
+    });
+    nav.appendChild(list);
+    this.el.append(nav, cards);
+    this.progress();
+  }
+
+  progress() {
+    this.status.textContent = this.ready === 0 ? "The Storytellers are writing each stop. They will appear here as they are ready."
+      : this.ready < this.total ? `${this.ready} of ${this.total} stops ready. The rest are on their way.`
+      : "Every stop is ready. Adding the finishing touches.";
+    this.fillBar.style.width = `${Math.round(100 * this.ready / this.total)}%`;
+  }
+
+  fill(e) {
+    const old = this.cards[e.n];
+    if (!old || !old.classList.contains("waiting")) return;
+    const body = el("div");
+    body.innerHTML = DOMPurify.sanitize(marked.parse(citeLinks(e.markdown || ""), { breaks: true }), { ADD_ATTR: ["target"] });
+    dedupeChips(body);
+    const card = buildCards(body, this.route)[0];
+    if (!card) return;
+    card.classList.add("arrived");
+    old.replaceWith(card);
+    this.cards[e.n] = card;
+    this.items[e.n].className = "ready" + (card.classList.contains("extra") ? " extra" : "");
+    this.ready += 1;
+    this.progress();
+  }
+
+  // The card nearest the top of the screen, to keep in place when the finished tour replaces this
+  readingCard() {
+    const all = Object.values(this.cards);
+    return all.filter(c => c.getBoundingClientRect().top <= 120).pop() || null;
+  }
+}
+
+// What a stop's audio reads, as sentences marked in the page: the stop and title, what to look for,
+// then the story (the order the card shows them). Each piece of text knows its element, so the
+// sentence being read can be highlighted.
+function cardSegs(card, n) {
+  const label = card.classList.contains("extra") ? `Extra stop, number ${String(n).replace(/^E/, "")}` : `Stop ${n}`;
+  // The opening (stop, title, what to look for) is one paragraph; each story paragraph is another
+  const segs = [{ text: label + ".", el: card.querySelector(".stopno"), para: "head" },
+                { text: card.dataset.title + ".", el: card.querySelector("h3"), para: "head" }];
+  const look = card.querySelector(".lookfor");
+  if (look) sentenceSegs(look).forEach((sg, i) => segs.push({ ...sg, para: "head",
+    text: (i ? sg.text : "Look for " + sg.text.replace(/^(\w)/, m => m.toLowerCase())).replace(/([^.!?])$/, "$1.") }));
+  const story = card.querySelector(".story");
+  if (story) story.querySelectorAll("p, li").forEach((b, k) => sentenceSegs(b).forEach(sg => segs.push({ ...sg, para: "story" + k })));
+  return segs;
+}
+
+function cardSpeech(card, n) { return cardSegs(card, n).map(sg => sg.text).join(" "); }
+
+// A plain answer's sentences, top to bottom, skipping the folded notes and the steps panel
+function answerSegs(body) {
+  // One paragraph per request: a heading goes with the paragraph after it, a list is read as one
+  const segs = [];
+  let para = 0, heading = false;
+  body.querySelectorAll("h1, h2, h3, p, li").forEach(b => {
+    if (b.closest("details, .answer-tools, .actions") || b.querySelector("p, li")) return;
+    if (/^H\d$/.test(b.nodeName)) {
+      const t = spoken(b);
+      if (t) { if (!heading) para++; heading = true; segs.push({ text: t + ".", el: b, para }); }
+      return;
+    }
+    const key = b.nodeName === "LI" ? b.parentElement : b;
+    if (!heading && key !== answerSegs.last) para++;
+    heading = false;
+    answerSegs.last = key;
+    sentenceSegs(b).forEach(sg => segs.push({ ...sg, para }));
+  });
+  answerSegs.last = null;
+  return segs;
+}
+
+const SENTENCE_END = /(?<=[.!?]["”’)]?)\s+(?=[A-Z"“‘(])/;
+
+// Wrap each sentence of a block in <span class="sent"> (once), and return [{text, el}] for each.
+// Citation chips sit before the full stop, so splitting text nodes at sentence ends keeps each chip
+// with its sentence.
+function sentenceSegs(block) {
+  if (!block.dataset.sents) {
+    block.dataset.sents = "1";
+    const groups = [[]];
+    [...block.childNodes].forEach(node => {
+      if (node.nodeType !== 3) { groups[groups.length - 1].push(node); return; }
+      node.textContent.split(SENTENCE_END).forEach((part, i) => {
+        if (i) groups.push([]);
+        groups[groups.length - 1].push(document.createTextNode(part));
+      });
+    });
+    block.textContent = "";
+    groups.forEach(g => {
+      if (!g.length) return;
+      const span = el("span", "sent");
+      span.append(...g);
+      block.appendChild(span);
+      block.appendChild(document.createTextNode(" "));
+    });
+  }
+  return [...block.querySelectorAll(":scope > .sent")].map(sp => ({ text: spoken(sp), el: sp })).filter(sg => sg.text);
+}
+
+// The words of an element as they should be spoken: no citation chips, labels or buttons
+function spoken(node) {
+  const c = node.cloneNode(true);
+  c.querySelectorAll(".cite, button, b").forEach(x => x.remove());
+  return c.textContent.replace(/\s+/g, " ").replace(/\s+([.,;:])/g, "$1").replace(/[,;:]+\./g, ".")
+    .replace(/\.{2}(?!\.)/g, ".").trim();  // "B.C.." -> "B.C."
+}
+
+// "Before you go" folds into one line that opens on tap
+function foldNotes(body) {
+  const h = [...body.querySelectorAll("h2, h3")].find(x => /before you go/i.test(x.textContent));
+  if (!h) return;
+  const d = el("details", "notes");
+  const parts = [];
+  for (let n = h.nextSibling; n && !/^(H1|H2|H3)$/.test(n.nodeName); n = n.nextSibling) parts.push(n);
+  const count = parts.reduce((k, n) => k + (n.querySelectorAll ? n.querySelectorAll("li").length : 0), 0);
+  const s = el("summary"); s.innerHTML = `<span class="ov-label">Before you go</span>`;
+  s.appendChild(document.createTextNode(count ? `${count} note${count > 1 ? "s" : ""} on the route and the data` : "Notes on the route and the data"));
+  d.appendChild(s);
+  parts.forEach(n => d.appendChild(n));
+  h.replaceWith(d);
+}
+
+// Readable text of a node: no citation chips, buttons or (optionally) other parts
+function speakable(node, skip = "") {
+  const c = node.cloneNode(true);
+  c.querySelectorAll(".cite, button, .answer-tools, .actions" + (skip ? ", " + skip : "")).forEach(x => x.remove());
+  c.querySelectorAll("p, li, h1, h2, h3, div").forEach(x => x.append(". "));
+  return c.textContent.replace(/\s+/g, " ").replace(/\s+([.,;:])/g, "$1").replace(/[,;:]+\./g, ".")
+    .replace(/(\.\s*){2,}/g, ". ").trim();
+}
+
+// --- Audio: a natural voice from the server (/speak), a sentence or two at a time, fetched ahead
+// of what is playing. If the server can't speak, the browser's own voice takes over. ---
+
+const PLAY = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>';
+const STOP = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>';
+const AHEAD = 1;  // pieces fetched ahead of the one playing (the voice service allows only a few at a time)
+
+const Speech = {
+  ok: "Audio" in window,
+  token: 0,
+  active: null,   // {button, label}
+  player: new Audio(),
+  urls: [],
+  abort: null,
+  fallbackVoice: null,
+  rate: (() => { try { return +localStorage.getItem("voice-rate") || 1; } catch (e) { return 1; } })(),
+  // Playing speed, kept between visits; the voice keeps its pitch
+  setRate(r) {
+    this.rate = r;
+    try { localStorage.setItem("voice-rate", String(r)); } catch (e) {}
+    this.player.defaultPlaybackRate = this.player.playbackRate = r;
+    document.querySelectorAll(".speed").forEach(b => { b.textContent = speedLabel(r); b.title = `Playing speed: ${speedLabel(r)}. Tap to change.`; });
+  },
+  // A silent sound played inside the click, so phones allow the voice that follows
+  unlock() {
+    const n = 800, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    w(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); w(8, "WAVEfmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+    v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true);
+    v.setUint16(34, 16, true); w(36, "data"); v.setUint32(40, n * 2, true);
+    this.player.src = URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+    this.player.play().catch(() => {});
+  },
+  // Play a list of items ({text, card} or strings), one after another
+  play(items, onDone, onStart) {
+    const token = ++this.token;
+    this.abort = new AbortController();
+    const queue = [];
+    items.forEach(it => {
+      const item = typeof it === "string" ? { text: it } : it;
+      const pieces = item.segs ? pieceSegs(item.segs) : [{ t: item.text, segs: [] }];
+      pieces.forEach((p, k) => queue.push({ ...p, card: k === 0 ? item.card : null }));
+    });
+    // Each paragraph is one request. Starting it returns an address that streams the audio while it
+    // is being made, so playback begins within a second or two; starting the next paragraph early
+    // means it is ready by the time the current one ends.
+    const fetched = [];
+    const start = (text, fresh = false) => fetch("/speak/start", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, fresh }), signal: this.abort.signal })
+      .then(r => r.ok ? r.json() : null).then(d => d ? `/speak/audio/${d.id}` : null).catch(() => null);
+    const get = i => {
+      if (i >= queue.length) return null;
+      if (!fetched[i]) fetched[i] = start(queue[i].t, !!queue[i].retries).then(url => url || (token === this.token ? start(queue[i].t) : null));
+      return fetched[i];
+    };
+    let i = 0, started = false;
+    const next = async () => {
+      if (token !== this.token) return;
+      if (i >= queue.length) { onDone(); return; }
+      const k = i++, q = queue[k];
+      for (let j = 1; j <= AHEAD; j++) get(k + j);
+      const url = await get(k);
+      if (token !== this.token) return;
+      if (q.card) {
+        document.querySelectorAll(".card.speaking").forEach(c => c.classList.remove("speaking"));
+        q.card.classList.add("speaking");
+        if (!q.segs.length) q.card.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      if (!started) { started = true; onStart && onStart(); }
+      this.follow(q, 0);
+      if (url) {
+        let done = false;
+        // If the voice stopped before the end of the paragraph, read the rest before moving on
+        const finish = async () => {
+          if (done) return; done = true;
+          const rest = await this.remainder(q, url);
+          if (token !== this.token) return;
+          if (rest) { queue.splice(i, 0, rest); fetched.splice(i, 0, undefined); } else this.learnPace(q);
+          next();
+        };
+        this.player.src = url;
+        this.player.preservesPitch = true;
+        this.player.defaultPlaybackRate = this.player.playbackRate = this.rate;
+        this.player.onended = finish;
+        // A stream that fails before it starts is read by the browser's own voice instead
+        this.player.onerror = () => { if (done) return; done = true;
+          this.player.currentTime > 1 ? next() : this.browserSay(q, next); };
+        // Within a paragraph, move the highlight at the pause that ends each sentence (found in the
+        // audio by the server once it is made). Until then, estimate from each sentence's share of
+        // the text, and of the length estimated from the pace while the audio is still streaming.
+        this.player.ontimeupdate = () => {
+          if (!q.timed) this.askLength(q, url);
+          const t = this.player.currentTime;
+          if (q.bounds) { this.followTime(q, t); return; }
+          const d = this.player.duration;
+          const length = isFinite(d) && d > 0 ? d : q.seconds || q.t.length / this.pace;
+          this.follow(q, Math.min(0.999, t / length));
+        };
+        this.player.play().catch(e => { if (token === this.token && !done && e.name !== "AbortError") {
+          done = true; this.browserSay(q, next); } });
+      } else {
+        this.browserSay(q, next);
+      }
+    };
+    next();
+  },
+  // Highlight the sentence being read at this time (seconds), from the sentence ends found in the audio
+  followTime(q, t) {
+    if (!q.segs || !q.segs.length) return;
+    const k = q.bounds.findIndex(b => t < b);
+    const sg = q.segs[k < 0 ? q.segs.length - 1 : k];
+    if (this.reading !== sg.el) this.mark(sg.el);
+  },
+  // Where each sentence ends in the audio: for each sentence, the longest pause near where its share
+  // of the text says it ends. A sentence end is a pause of about a second; a comma's is much shorter.
+  // Numbers and pauses make the share alone run seconds early, which this corrects.
+  sentenceEnds(q, seconds, pauses) {
+    if (!q.segs || q.segs.length < 2 || !pauses.length) return null;
+    const ends = [];
+    let after = 0;
+    for (const sg of q.segs.slice(0, -1)) {
+      const guess = sg.end * seconds;
+      const near = pauses.filter(([mid, len]) => mid > after && Math.abs(mid - guess) <= 5 && len >= 0.35);
+      const best = near.sort((a, b) => b[1] - a[1] || Math.abs(a[0] - guess) - Math.abs(b[0] - guess))[0];
+      const at = best ? best[0] : Math.max(guess, after + 0.5);
+      ends.push(at);
+      after = at;
+    }
+    return ends.concat(Infinity);
+  },
+  // Highlight the sentence at this point (0 to 1) of a piece; scroll only if it is off screen
+  follow(q, at) {
+    if (!q.segs || !q.segs.length) return;
+    const sg = q.segs.find(x => at < x.end) || q.segs[q.segs.length - 1];
+    if (this.reading === sg.el) return;
+    this.mark(sg.el);
+  },
+  mark(node) {
+    if (this.reading) this.reading.classList.remove("reading");
+    this.reading = node || null;
+    if (!node) return;
+    node.classList.add("reading");
+    const r = node.getBoundingClientRect(), bar = document.querySelector(".composer");
+    const bottom = window.innerHeight - (bar ? bar.offsetHeight : 0) - 16;
+    if (r.top < 16 || r.bottom > bottom) node.scrollIntoView({ behavior: "smooth", block: "center" });
+  },
+  reading: null,
+  pace: 16.5,  // characters of text per second of the voice at 1x, until the real length is known
+  learnPace(q) {
+    const d = isFinite(this.player.duration) && this.player.duration > 0 ? this.player.duration : q.seconds;
+    if (d > 20 && q.t.length / d < 19) this.pace = q.t.length / d;  // from whole story paragraphs only
+  },
+  // The part of a paragraph the voice did not read, from the sentence it stopped in. Asked at most
+  // twice per paragraph, so a voice that keeps stopping cannot loop.
+  async remainder(q, url) {
+    if ((q.retries || 0) >= 2 || !q.segs.length) return null;
+    let info;
+    try { info = await (await fetch(url.replace("/audio/", "/info/"))).json(); } catch (e) { return null; }
+    if (!info.short) return null;
+    // Share of the text read, at an ordinary pace; then go back one more sentence, since the pace
+    // is only an estimate: better to hear a sentence twice than to miss one
+    const heard = info.seconds * 14 / q.t.length;
+    const stop = q.segs.findIndex(sg => sg.end > heard);
+    const from = Math.max(0, (stop < 0 ? q.segs.length - 1 : stop) - 1);
+    const segs = q.segs.slice(from);
+    const t = segs.map(sg => sg.text).join(" ");
+    let at = 0;
+    return { t, segs: segs.map(sg => ({ ...sg, end: (at += sg.text.length + 1) / (t.length + 1) })), retries: (q.retries || 0) + 1 };
+  },
+  // The server knows a paragraph's exact length once it has finished making it: ask now and then
+  askLength(q, url) {
+    if (q.asking || Date.now() - (q.asked || 0) < 2500) return;
+    q.asking = true; q.asked = Date.now();
+    fetch(url.replace("/audio/", "/info/")).then(r => r.json())
+      .then(d => {
+        if (!(d.done && d.seconds > 0)) return;
+        q.seconds = d.seconds;
+        q.timed = true;
+        q.bounds = this.sentenceEnds(q, d.seconds, d.pauses || []);
+      }).catch(() => {}).finally(() => { q.asking = false; });
+  },
+  browserSay(q, then) {
+    const text = typeof q === "string" ? q : q.t;
+    if (!("speechSynthesis" in window)) { then(); return; }
+    if (!this.fallbackVoice) {
+      const vs = speechSynthesis.getVoices().filter(v => /^en(-|_|$)/i.test(v.lang));
+      const score = v => (/natural|neural|premium|enhanced/i.test(v.name) ? 4 : 0) + (/google|samantha|daniel/i.test(v.name) ? 2 : 0);
+      this.fallbackVoice = vs.sort((a, b) => score(b) - score(a))[0] || null;
+    }
+    const u = new SpeechSynthesisUtterance(text);
+    if (this.fallbackVoice) u.voice = this.fallbackVoice;
+    u.rate = 0.95 * this.rate;
+    if (q.segs && q.segs.length) u.onboundary = e => this.follow(q, e.charIndex / Math.max(1, text.length));
+    const token = this.token;
+    u.onend = () => token === this.token && then();
+    u.onerror = e => { if (token === this.token && e.error !== "interrupted" && e.error !== "canceled") then(); };
+    speechSynthesis.speak(u);
+  },
+  stop() {
+    this.token++;
+    if (this.abort) this.abort.abort();
+    this.player.onended = this.player.onerror = this.player.ontimeupdate = null;
+    this.mark(null);
+    this.player.pause();
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    this.player.removeAttribute("src"); this.player.load();  // stop downloading a stream that is cut off
+    document.querySelectorAll(".card.speaking").forEach(c => c.classList.remove("speaking"));
+    if (this.active) { setListen(this.active.button, false, this.active.label); this.active = null; }
+  },
+};
+
+// One piece of audio per paragraph, so the voice reads each paragraph whole in a single request.
+// Each sentence records where its share of the piece ends (0 to 1), for the highlight.
+function pieceSegs(segs) {
+  const out = [];
+  let cur = [];
+  const flush = () => {
+    if (!cur.length) return;
+    const t = cur.map(x => x.text).join(" ");
+    // How long each sentence takes to say, roughly: its letters, more for digits (1852 is "eighteen
+    // fifty-two"), and a pause at its end
+    const say = x => x.text.length + 2 * (x.text.match(/\d/g) || []).length + 12;
+    const total = cur.reduce((n, x) => n + say(x), 0);
+    let at = 0;
+    out.push({ t, segs: cur.map(x => ({ el: x.el, text: x.text, end: (at += say(x)) / total })) });
+    cur = [];
+  };
+  segs.forEach(sg => {
+    if (cur.length && cur[cur.length - 1].para !== sg.para) flush();
+    cur.push(sg);
+  });
+  flush();
+  return out;
+}
+
+function setListen(button, on, label, waiting = false) {
+  button.setAttribute("aria-pressed", on ? "true" : "false");
+  button.innerHTML = (on ? STOP : PLAY) + `<span>${on ? (waiting ? "Starting…" : "Stop") : label}</span>`;
+}
+
+const SPEEDS = [1, 1.25, 1.5];
+function speedLabel(r) { return `${r}×`; }
+// Cycles 1× -> 1.25× -> 1.5×; every speed button on the page shows the same setting
+function speedButton() {
+  const b = el("button", "speed");
+  b.type = "button";
+  b.textContent = speedLabel(Speech.rate);
+  b.title = `Playing speed: ${speedLabel(Speech.rate)}. Tap to change.`;
+  b.setAttribute("aria-label", "Playing speed");
+  b.addEventListener("click", () => Speech.setRate(SPEEDS[(SPEEDS.indexOf(Speech.rate) + 1) % SPEEDS.length]));
+  return b;
+}
+
+function listenButton(getItems, highlight, label, cls = "") {
+  const b = el("button", "listen " + cls);
+  b.type = "button";
+  setListen(b, false, label);
+  b.addEventListener("click", () => {
+    if (Speech.active && Speech.active.button === b) { Speech.stop(); return; }
+    Speech.stop();
+    Speech.unlock();
+    Speech.active = { button: b, label };
+    setListen(b, true, label, true);
+    const items = getItems().map(it => (typeof it === "string" && highlight && highlight.classList.contains("card")) ? { text: it, card: highlight } : it);
+    Speech.play(items, () => Speech.stop(), () => setListen(b, true, label));
+  });
+  return b;
+}
+window.addEventListener("pagehide", () => Speech.stop());
+
+// --- Behind the scenes: every step the agents take, in their own words, as it happens ---
+// One lane per agent, in the order they start. A lane holds the agent's thinking (Gemini's own
+// summary). Tool calls and their results are recorded but not shown: only the thinking.
+
+function agentKind(n) {
+  return /^Researcher/.test(n) ? "research" : /^Storyteller/.test(n) ? "story" : n === "Writer" ? "writer" : /check/i.test(n) ? "check" : "guide";
+}
+
+function eventsFromCalls(calls) {
+  const out = [];
+  calls.forEach((c, i) => {
+    out.push({ type: "call", id: "c" + i, agent: c.agent, name: c.name, args: c.args || {} });
+    out.push({ type: "result", id: "c" + i, agent: c.agent, name: c.name, result: c.result });
+  });
+  return out;
+}
+
+class Steps {
+  constructor(live) {
+    this.live = live;
+    this.el = el("details", "steps" + (live ? " live" : ""));
+    this.el.open = live;
+    this.summary = el("summary");
+    this.body = el("div", "steps-body");
+    this.el.append(this.summary, this.body);
+    this.lanes = new Map();
+    this.items = {};
+    this.calls = 0;
+    this.started = Date.now();
+    this.seconds = null;
+    this.paint();
+    if (live) this.clock = setInterval(() => this.paint(), 1000);
+  }
+
+  lane(name) {
+    if (!this.lanes.has(name)) {
+      const box = el("section", "lane " + agentKind(name));
+      const head = el("div", "lane-head");
+      head.innerHTML = '<span class="dot"></span><span class="lane-name"></span><span class="lane-count"></span><span class="lane-state"></span>';
+      head.querySelector(".lane-name").textContent = name;
+      const list = el("div", "lane-steps");
+      box.append(head, list);
+      this.body.appendChild(box);
+      this.lanes.set(name, { box, head, list, calls: 0 });
+      if (this.live) this.body.scrollTop = this.body.scrollHeight;
+    }
+    return this.lanes.get(name);
+  }
+
+  state(name, active) {
+    const l = this.lane(name);
+    l.box.classList.toggle("active", active);
+    l.head.querySelector(".lane-state").textContent = this.live ? (active ? "● working" : "✓ done") : "";
+  }
+
+  push(l, node) {
+    const atEnd = l.list.scrollTop + l.list.clientHeight >= l.list.scrollHeight - 30;
+    l.list.appendChild(node);
+    if (atEnd) l.list.scrollTop = l.list.scrollHeight;
+  }
+
+  add(e) {
+    if (e.agent === "Citation check") return;  // a check in code, not an agent that thinks
+    if (e.type === "agent") this.state(e.agent, true);
+    else if (e.type === "agent_end") this.state(e.agent, false);
+    else if (e.type === "thought") {
+      const l = this.lane(e.agent);
+      const t = el("div", "step thought");
+      const m = String(e.text).match(/^\*\*(.+?)\*\*\s*/);
+      const label = el("div", "step-label"); label.textContent = "Thinking";
+      const head = el("div", "thought-head"); head.textContent = m ? m[1] : "";
+      const text = el("div", "thought-text"); text.textContent = m ? e.text.slice(m[0].length) : e.text;
+      text.addEventListener("click", () => text.classList.toggle("open"));
+      t.append(label);
+      if (m) t.append(head);
+      t.append(text);
+      this.push(l, t);
+    } else if (e.type === "limit") {
+      const t = el("div", "step limit"); t.textContent = e.text;
+      this.push(this.lane(e.agent), t);
+    }
+    // Tool calls and their results are not shown: the panel shows the agents' own thinking only
+    this.paint();
+  }
+
+  paint() {
+    const secs = this.seconds ?? Math.round((Date.now() - this.started) / 1000);
+    const n = this.lanes.size;
+    this.summary.innerHTML = '<span class="ov-label">Behind the scenes</span>';
+    const line = el("span", "steps-count");
+    line.textContent = `${n} agent${n === 1 ? "" : "s"}` + (secs ? ` · ${secs} s` : "");
+    this.summary.appendChild(line);
+  }
+
+  finish(seconds) {
+    clearInterval(this.clock);
+    if (seconds) this.seconds = seconds;
+    this.live = false;
+    this.el.classList.remove("live");
+    this.el.open = false;
+    this.lanes.forEach((l, name) => { l.box.classList.remove("active"); l.head.querySelector(".lane-state").textContent = ""; });
+    this.paint();
+  }
+}
+
+// What came back, in a few words: a count of rows or results, a title, an error, or the start of the text
+function brief(r) {
+  let d;
+  try { d = JSON.parse(r); } catch (e) { return String(r || "").replace(/\s+/g, " ").slice(0, 90) + (String(r || "").length > 90 ? "…" : ""); }
+  if (d && typeof d === "object") {
+    if (d.error) return "error: " + String(d.error).slice(0, 80);
+    if (Array.isArray(d.rows)) return `${d.rows.length} row${d.rows.length === 1 ? "" : "s"}`;
+    if (Array.isArray(d.results)) return `${d.results.length} result${d.results.length === 1 ? "" : "s"}`;
+    if (Array.isArray(d)) return `${d.length} result${d.length === 1 ? "" : "s"}`;
+    if ("ok" in d) return `ok: ${d.ok}` + (d.tags !== undefined ? ` · ${d.tags} citations` : "");
+    if (Array.isArray(d.stops)) return `${d.stops.length} stops, ${(d.extras || []).length} extras, about ${d.total_minutes} min`;
+    if (Array.isArray(d.findings)) return `${d.findings.length} findings`;
+    if (d.title) return String(d.title).split("|").pop().trim().slice(0, 80);
+  }
+  return String(r).slice(0, 90);
+}
+
+function shortArgs(a) {
+  const v = Object.entries(a || {}).filter(([, x]) => x !== "" && x !== null && !(Array.isArray(x) && !x.length));
+  return v.map(([k, x]) => `${k}: ${typeof x === "string" ? x.slice(0, 40) : JSON.stringify(x).slice(0, 40)}`).join(", ");
+}
+function pretty(r) { try { return JSON.stringify(JSON.parse(r), null, 2); } catch (e) { return r; } }
+</script>
+</body>
+</html>

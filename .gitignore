@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+.DS_Store
+# The 340 MB source CSV and crawl logs stay local; the built database is committed.
+data/raw/MetObjects.csv
+data/raw/*.log
+data/raw/*.jsonl
+voice-samples/
+
+# AI reconstructions, made on demand
+reconstructions/
+.claude/
